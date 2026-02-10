@@ -1,0 +1,10 @@
+{
+    "pack": {
+        "min_format": [94, 1],
+        "max_format": [94, 1],
+        "description": {
+            "text": "ブロックID及びブロック状態の取得用ライブラリ",
+            "color": "red"
+        }
+    }
+}

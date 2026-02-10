@@ -64,7 +64,7 @@ bukkitPluginYaml {
     version = "${project.version}"
     apiVersion = "1.21.11"
     authors.add("Takenoko-II")
-    main = "com.gmail.takenokoii78.blockstateaccessor.BlockStateAccessor"
+    main = "com.gmail.takenokoii78.blockpropertyaccessor.BlockPropertyAccessor"
 }
 
 paperPluginYaml {
@@ -73,5 +73,5 @@ paperPluginYaml {
     version = "${project.version}"
     apiVersion = "1.21.11"
     authors.add("Takenoko-II")
-    main = "com.gmail.takenokoii78.blockstateaccessor.BlockStateAccessor"
+    main = "com.gmail.takenokoii78.blockpropertyaccessor.BlockPropertyAccessor"
 }
