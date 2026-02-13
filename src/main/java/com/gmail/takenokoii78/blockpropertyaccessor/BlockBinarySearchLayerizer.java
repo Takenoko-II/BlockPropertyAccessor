@@ -16,6 +16,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 @NullMarked
 public class BlockBinarySearchLayerizer {
@@ -23,14 +24,20 @@ public class BlockBinarySearchLayerizer {
 
     public static final String PROPERTIES = "properties";
 
+    private final char ZERO;
+
+    private final char ONE;
+
     private final List<BlockType> list;
 
-    public BlockBinarySearchLayerizer(List<BlockType> list) {
-        this.list = list;
+    public BlockBinarySearchLayerizer(List<BlockType> list, char zero, char one) {
+        this.list = new ArrayList<>(list);
+        this.ZERO = zero;
+        this.ONE = one;
     }
 
     public void layerize() {
-        layerize(list.size(), BlockPropertyAccessor.FUNCTION_DIRECTORY);
+        layerize(list, BlockPropertyAccessor.FUNCTION_DIRECTORY);
 
         final Path entrypoint = BlockPropertyAccessor.FUNCTION_DIRECTORY.resolve(".mcfunction");
         try {
@@ -52,7 +59,7 @@ public class BlockBinarySearchLayerizer {
         }
     }
 
-    private List<BlockType> layerize(int size, Path directory) {
+    private List<BlockType> layerize(List<BlockType> list, Path directory) {
         try {
             Files.createDirectories(directory);
         }
@@ -60,7 +67,7 @@ public class BlockBinarySearchLayerizer {
             throw new RuntimeException(e);
         }
 
-        if (size <= 2) {
+        if (list.size() <= 2) {
             final List<BlockType> values = new ArrayList<>();
             if (!list.isEmpty()) values.add(list.removeFirst());
             if (!list.isEmpty()) values.add(list.removeFirst());
@@ -70,8 +77,11 @@ public class BlockBinarySearchLayerizer {
             return values;
         }
         else {
-            final List<BlockType> values0 = layerize(size / 2, directory.resolve("0"));
-            final List<BlockType> values1 = layerize(size / 2, directory.resolve("1"));
+            final int s = list.size() / 2;
+            final List<BlockType> a = list.subList(0, s);
+            final List<BlockType> b = list.subList(s, list.size());
+            final List<BlockType> values0 = layerize(new ArrayList<>(a), directory.resolve(String.valueOf(ZERO)));
+            final List<BlockType> values1 = layerize(new ArrayList<>(b), directory.resolve(String.valueOf(ONE)));
 
             final Path relative = BlockPropertyAccessor.FUNCTION_DIRECTORY.relativize(directory);
             final Path tagDirectory = BlockPropertyAccessor.TAGS_BLOCK_DIRECTORY.resolve(relative);
@@ -83,13 +93,18 @@ public class BlockBinarySearchLayerizer {
                 throw new RuntimeException(e);
             }
 
-            if (values0.isEmpty() && values1.isEmpty()) {
-                tagBlockTags(tagDirectory.resolve("0.json"), relative.resolve("0"));
-                tagBlockTags(tagDirectory.resolve("1.json"), relative.resolve("1"));
+            if (values0.isEmpty()) {
+                tagBlockTags(tagDirectory.resolve(ZERO + ".json"), relative.resolve(String.valueOf(ZERO)));
             }
             else {
-                tagBlocks(tagDirectory.resolve("0.json"), values0);
-                tagBlocks(tagDirectory.resolve("1.json"), values1);
+                tagBlocks(tagDirectory.resolve(ZERO + ".json"), values0);
+            }
+
+            if (values1.isEmpty()) {
+                tagBlockTags(tagDirectory.resolve(ONE + ".json"), relative.resolve(String.valueOf(ONE)));
+            }
+            else {
+                tagBlocks(tagDirectory.resolve(ONE + ".json"), values1);
             }
 
             final Path functionPath = directory.resolve(".mcfunction");
@@ -99,16 +114,16 @@ public class BlockBinarySearchLayerizer {
                     String.format(
                         "execute if block ~ ~ ~ #%s:%s run function %s:%s",
                         BlockPropertyAccessor.NAMESPACE,
-                        relative.resolve("0").toString().replaceAll("\\\\", "/"),
+                        relative.resolve(String.valueOf(ZERO)).toString().replaceAll("\\\\", "/"),
                         BlockPropertyAccessor.NAMESPACE,
-                        relative.resolve("0").toString().replaceAll("\\\\", "/") + '/'
+                        relative.resolve(String.valueOf(ZERO)).toString().replaceAll("\\\\", "/") + '/'
                     ),
                     String.format(
                         "execute if block ~ ~ ~ #%s:%s run function %s:%s",
                         BlockPropertyAccessor.NAMESPACE,
-                        relative.resolve("1").toString().replaceAll("\\\\", "/"),
+                        relative.resolve(String.valueOf(ONE)).toString().replaceAll("\\\\", "/"),
                         BlockPropertyAccessor.NAMESPACE,
-                        relative.resolve("1").toString().replaceAll("\\\\", "/") + '/'
+                        relative.resolve(String.valueOf(ONE)).toString().replaceAll("\\\\", "/") + '/'
                     )
                 ));
             }
@@ -164,18 +179,16 @@ public class BlockBinarySearchLayerizer {
             .defaultBlockState().getProperties();
 
         for (final Property<?> property : properties) {
-            property.getAllValues().forEach(value -> {
-                finalLines.add(String.format(
-                    "execute if block ~ ~ ~ %s[%s=%s] run data modify storage %s: %s.%s set value %s",
-                    key,
-                    property.getName(),
-                    getPropertyValueName(value),
-                    BlockPropertyAccessor.NAMESPACE,
-                    PROPERTIES,
-                    property.getName(),
-                    getPropertyValueName(value)
-                ));
-            });
+            property.getAllValues().forEach(value -> finalLines.add(String.format(
+                "execute if block ~ ~ ~ %s[%s=%s] run data modify storage %s: %s.%s set value %s",
+                key,
+                property.getName(),
+                getPropertyValueName(value),
+                BlockPropertyAccessor.NAMESPACE,
+                PROPERTIES,
+                property.getName(),
+                getPropertyValueName(value)
+            )));
         }
 
         try {
@@ -196,10 +209,6 @@ public class BlockBinarySearchLayerizer {
         object.set("replace", false);
         final JSONArray array = new JSONArray();
         for (final BlockType value : values) {
-            /*final JSONObject element = new JSONObject();
-            element.set("required", false);
-            element.set("id", value.getKey().toString());
-            array.add(element);*/
             array.add(value.getKey().toString());
         }
         object.set("values", array);
@@ -213,8 +222,10 @@ public class BlockBinarySearchLayerizer {
         final JSONObject object = new JSONObject();
         object.set("replace", false);
         final JSONArray array = new JSONArray();
-        array.add('#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve("0").toString().replaceAll("\\\\", "/"));
-        array.add('#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve("1").toString().replaceAll("\\\\", "/"));
+        final String $0 = '#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve(String.valueOf(ZERO)).toString().replaceAll("\\\\", "/");
+        final String $1 = '#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve(String.valueOf(ONE)).toString().replaceAll("\\\\", "/");
+        array.add(JSONObject.valueOf(Map.of("id", $0, "required", false)));
+        array.add(JSONObject.valueOf(Map.of("id", $1, "required", false)));
         object.set("values", array);
 
         final JSONFile file = new JSONFile(path);

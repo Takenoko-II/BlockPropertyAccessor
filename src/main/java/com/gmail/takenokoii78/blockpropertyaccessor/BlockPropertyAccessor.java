@@ -1,19 +1,16 @@
 package com.gmail.takenokoii78.blockpropertyaccessor;
 
 import com.gmail.subnokoii78.gpcore.files.ResourceAccess;
-import io.papermc.paper.registry.RegistryAccess;
-import io.papermc.paper.registry.RegistryKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.bukkit.Bukkit;
+import org.bukkit.Registry;
 import org.bukkit.block.BlockType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NullMarked;
 
 import java.io.IOException;
 import java.nio.file.*;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -49,8 +46,11 @@ public final class BlockPropertyAccessor extends JavaPlugin {
         final ResourceAccess resourceAccess = new ResourceAccess(BLOCK_PROPERTY_ACCESSOR);
         resourceAccess.copy(ROOT_DIRECTORY);
 
-        final List<BlockType> blockTypes = RegistryAccess.registryAccess().getRegistry(RegistryKey.BLOCK).stream().toList();
-        final BlockBinarySearchLayerizer layerizer = new BlockBinarySearchLayerizer(new ArrayList<>(blockTypes));
+        final BlockBinarySearchLayerizer layerizer = new BlockBinarySearchLayerizer(
+            Registry.BLOCK.stream().toList(),
+            '0',
+            '1'
+        );
         layerizer.layerize();
 
         final ZipCompressor compressor = new ZipCompressor(ROOT_DIRECTORY);
