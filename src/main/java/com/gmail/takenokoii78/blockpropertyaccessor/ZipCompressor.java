@@ -3,6 +3,7 @@ package com.gmail.takenokoii78.blockpropertyaccessor;
 import org.jspecify.annotations.NullMarked;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,14 +40,18 @@ public class ZipCompressor {
         try (final Stream<Path> stream = Files.list(path)) {
             stream.forEach(p -> {
                 try {
-                    final String name = p.subpath(rootCount, p.getNameCount()).toString();
+                    final String name = p.subpath(rootCount, p.getNameCount()).toString()
+                        .replace(File.separatorChar, '/');
                     if (Files.isDirectory(p)) {
                         zip.putNextEntry(new ZipEntry(name + '/'));
+                        zip.closeEntry();
                         directory(rootCount, p, zip);
                     }
                     else {
                         zip.putNextEntry(new ZipEntry(name));
-                        zip.write(Files.readAllBytes(p));
+                        Files.copy(p, zip);
+                        // zip.write(Files.readAllBytes(p));
+                        zip.closeEntry();
                     }
                 }
                 catch (IOException e) {

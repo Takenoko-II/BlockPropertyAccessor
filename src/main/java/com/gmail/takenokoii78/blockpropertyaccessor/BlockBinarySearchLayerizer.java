@@ -83,8 +83,14 @@ public class BlockBinarySearchLayerizer {
                 throw new RuntimeException(e);
             }
 
-            blockTag(tagDirectory.resolve("0.json"), values0);
-            blockTag(tagDirectory.resolve("1.json"), values1);
+            if (values0.isEmpty() && values1.isEmpty()) {
+                tagBlockTags(tagDirectory.resolve("0.json"), relative.resolve("0"));
+                tagBlockTags(tagDirectory.resolve("1.json"), relative.resolve("1"));
+            }
+            else {
+                tagBlocks(tagDirectory.resolve("0.json"), values0);
+                tagBlocks(tagDirectory.resolve("1.json"), values1);
+            }
 
             final Path functionPath = directory.resolve(".mcfunction");
             try {
@@ -110,10 +116,7 @@ public class BlockBinarySearchLayerizer {
                 throw new RuntimeException(e);
             }
 
-            final List<BlockType> values = new ArrayList<>();
-            values.addAll(values0);
-            values.addAll(values1);
-            return values;
+            return List.of();
         }
     }
 
@@ -163,14 +166,14 @@ public class BlockBinarySearchLayerizer {
         for (final Property<?> property : properties) {
             property.getAllValues().forEach(value -> {
                 finalLines.add(String.format(
-                    "execute if block ~ ~ ~ #%s[%s=%s] run data modify storage %s: %s.%s set value %s",
+                    "execute if block ~ ~ ~ %s[%s=%s] run data modify storage %s: %s.%s set value %s",
                     key,
                     property.getName(),
-                    value.value(),
+                    getPropertyValueName(value),
                     BlockPropertyAccessor.NAMESPACE,
                     PROPERTIES,
                     property.getName(),
-                    value
+                    getPropertyValueName(value)
                 ));
             });
         }
@@ -184,16 +187,34 @@ public class BlockBinarySearchLayerizer {
         }
     }
 
-    private void blockTag(Path path, List<BlockType> values) {
+    private <T extends Comparable<T>> String getPropertyValueName(Property.Value<T> value) {
+        return value.property().getName(value.value());
+    }
+
+    private void tagBlocks(Path path, List<BlockType> values) {
         final JSONObject object = new JSONObject();
         object.set("replace", false);
         final JSONArray array = new JSONArray();
         for (final BlockType value : values) {
-            final JSONObject element = new JSONObject();
+            /*final JSONObject element = new JSONObject();
             element.set("required", false);
             element.set("id", value.getKey().toString());
-            array.add(element);
+            array.add(element);*/
+            array.add(value.getKey().toString());
         }
+        object.set("values", array);
+
+        final JSONFile file = new JSONFile(path);
+        if (!file.exists()) file.create();
+        file.write(object);
+    }
+
+    private void tagBlockTags(Path path, Path directory) {
+        final JSONObject object = new JSONObject();
+        object.set("replace", false);
+        final JSONArray array = new JSONArray();
+        array.add('#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve("0").toString().replaceAll("\\\\", "/"));
+        array.add('#' + BlockPropertyAccessor.NAMESPACE + ':' + directory.resolve("1").toString().replaceAll("\\\\", "/"));
         object.set("values", array);
 
         final JSONFile file = new JSONFile(path);
