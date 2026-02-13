@@ -103,4 +103,4 @@ block_property_accessor:
             [C] execute if block ~ ~ ~ #block_property_accessor:1/1 run function block_property_accessor:1/1/
 ```
 
-`[C]` (コマンドの実行) を数えると約25コマンドであり、一度の探索に実行数は100にも満たないことがわかる
+`[C]` (コマンドの実行) を数えると約25コマンドであり、一度の探索にかかる実行数は100にも満たないことがわかる
