@@ -1,13 +1,21 @@
 package com.gmail.takenokoii78.blockpropertyaccessor;
 
 import com.gmail.subnokoii78.gpcore.files.ResourceAccess;
+import com.gmail.takenokoii78.json.JSONFile;
+import com.gmail.takenokoii78.json.JSONPath;
+import com.gmail.takenokoii78.json.values.JSONArray;
+import com.gmail.takenokoii78.json.values.JSONObject;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
 import org.bukkit.Bukkit;
 import org.bukkit.Registry;
-import org.bukkit.block.BlockType;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -33,8 +41,11 @@ public final class BlockPropertyAccessor extends JavaPlugin {
 
     public static final Path FINAL_OUTPUT = Path.of(ROOT_DIRECTORY + ".zip");
 
+    private static @Nullable Plugin plugin;
+
     @Override
     public void onLoad() {
+        plugin = this;
         getComponentLogger().info("BlockPropertyAccessor をロードしています");
     }
 
@@ -44,7 +55,29 @@ public final class BlockPropertyAccessor extends JavaPlugin {
         getComponentLogger().info("BlockPropertyAccessor が起動しました");
 
         final ResourceAccess resourceAccess = new ResourceAccess(BLOCK_PROPERTY_ACCESSOR);
-        resourceAccess.copy(ROOT_DIRECTORY);
+        resourceAccess.copy(ROOT_DIRECTORY, handle -> {
+            if (handle.getTo().endsWith("MARKER")) {
+                handle.ignore();
+            }
+            else if (handle.getTo().endsWith("pack.mcmeta")) {
+                handle.postProcess(p -> {
+                    getComponentLogger().info("pack.mcmeta を作成しています");
+
+                    final JSONFile packMcmeta = new JSONFile(p);
+                    final JSONObject jsonObject = packMcmeta.readAsObject();
+
+                    final PackFormat packFormat = SharedConstants.getCurrentVersion().packVersion(PackType.SERVER_DATA);
+                    final JSONArray version = JSONArray.valueOf(List.of(packFormat.major(), packFormat.minor()));
+
+                    jsonObject.set(JSONPath.of("pack.min_format"), version);
+                    jsonObject.set(JSONPath.of("pack.max_format"), version);
+
+                    packMcmeta.write(jsonObject);
+
+                    getComponentLogger().info("pack.mcmeta をロードしました: バージョン " + version.asList());
+                });
+            }
+        });
 
         final BlockBinarySearchLayerizer layerizer = new BlockBinarySearchLayerizer(
             Registry.BLOCK.stream().toList(),
@@ -53,8 +86,13 @@ public final class BlockPropertyAccessor extends JavaPlugin {
         );
         layerizer.layerize();
 
+        getComponentLogger().info("データパックを .zip に圧縮しています");
+
         final ZipCompressor compressor = new ZipCompressor(ROOT_DIRECTORY);
         compressor.compress(FINAL_OUTPUT);
+
+        getComponentLogger().info("不要なファイルを除去します");
+
         try (final Stream<Path> stream = Files.walk(ROOT_DIRECTORY).sorted(Comparator.reverseOrder())) {
             stream.forEach(path -> {
                 try {
@@ -79,5 +117,13 @@ public final class BlockPropertyAccessor extends JavaPlugin {
     public void onDisable() {
         // Plugin shutdown logic
         getComponentLogger().info(Component.text("BlockPropertyAccessor が停止しました"));
+    }
+
+    public static Plugin getPlugin() {
+        if (plugin == null) {
+            throw new RuntimeException();
+        }
+
+        return plugin;
     }
 }

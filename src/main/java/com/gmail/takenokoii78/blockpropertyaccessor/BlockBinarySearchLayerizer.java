@@ -8,6 +8,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockType;
 import org.bukkit.craftbukkit.block.CraftBlockType;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,6 +31,8 @@ public class BlockBinarySearchLayerizer {
 
     private final List<BlockType> list;
 
+    private int c;
+
     public BlockBinarySearchLayerizer(List<BlockType> list, char zero, char one) {
         this.list = new ArrayList<>(list);
         this.ZERO = zero;
@@ -37,7 +40,13 @@ public class BlockBinarySearchLayerizer {
     }
 
     public void layerize() {
+        BlockPropertyAccessor.getPlugin().getComponentLogger().info("二分探索を階層構造化しています");
+
         layerize(list, BlockPropertyAccessor.FUNCTION_DIRECTORY);
+
+        BlockPropertyAccessor.getPlugin().getComponentLogger().info("階層構造の生成が完了しました");
+
+        BlockPropertyAccessor.getPlugin().getComponentLogger().info("エントリポイントのコマンドを調整しています");
 
         final Path entrypoint = BlockPropertyAccessor.FUNCTION_DIRECTORY.resolve(".mcfunction");
         try {
@@ -57,9 +66,13 @@ public class BlockBinarySearchLayerizer {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        BlockPropertyAccessor.getPlugin().getComponentLogger().info("エントリポイントの編集が完了しました");
+
+        BlockPropertyAccessor.getPlugin().getComponentLogger().info("処理されたブロックタイプ数: {}", c);
     }
 
-    private List<BlockType> layerize(List<BlockType> list, Path directory) {
+    private @Nullable List<BlockType> layerize(List<BlockType> list, Path directory) {
         try {
             Files.createDirectories(directory);
         }
@@ -73,6 +86,11 @@ public class BlockBinarySearchLayerizer {
             if (!list.isEmpty()) values.add(list.removeFirst());
 
             finalBranchFunction(directory, values);
+
+            for (final BlockType value : values) {
+                BlockPropertyAccessor.getPlugin().getComponentLogger().info("ブロック {} に関連する処理を作成しました", value.getKey());
+                c++;
+            }
 
             return values;
         }
@@ -93,14 +111,14 @@ public class BlockBinarySearchLayerizer {
                 throw new RuntimeException(e);
             }
 
-            if (values0.isEmpty()) {
+            if (values0 == null) {
                 tagBlockTags(tagDirectory.resolve(ZERO + ".json"), relative.resolve(String.valueOf(ZERO)));
             }
             else {
                 tagBlocks(tagDirectory.resolve(ZERO + ".json"), values0);
             }
 
-            if (values1.isEmpty()) {
+            if (values1 == null) {
                 tagBlockTags(tagDirectory.resolve(ONE + ".json"), relative.resolve(String.valueOf(ONE)));
             }
             else {
@@ -131,7 +149,7 @@ public class BlockBinarySearchLayerizer {
                 throw new RuntimeException(e);
             }
 
-            return List.of();
+            return null;
         }
     }
 

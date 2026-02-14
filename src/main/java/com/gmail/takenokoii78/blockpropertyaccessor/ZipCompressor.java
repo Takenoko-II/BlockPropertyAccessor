@@ -40,8 +40,10 @@ public class ZipCompressor {
         try (final Stream<Path> stream = Files.list(path)) {
             stream.forEach(p -> {
                 try {
-                    final String name = p.subpath(rootCount, p.getNameCount()).toString()
+                    final String name = p.subpath(rootCount, p.getNameCount())
+                        .toString()
                         .replace(File.separatorChar, '/');
+
                     if (Files.isDirectory(p)) {
                         zip.putNextEntry(new ZipEntry(name + '/'));
                         zip.closeEntry();
@@ -50,7 +52,6 @@ public class ZipCompressor {
                     else {
                         zip.putNextEntry(new ZipEntry(name));
                         Files.copy(p, zip);
-                        // zip.write(Files.readAllBytes(p));
                         zip.closeEntry();
                     }
                 }
