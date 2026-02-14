@@ -29,7 +29,7 @@ function block_property_accessor:
 
 例えば上記のコマンドを実行した上で以下のコマンドを実行すると
 ```mcfunction
-data get storage block_property:accessor:
+data get storage block_property_accessor:
 ```
 
 レッドストーンランプの場合はこんな感じに出力される
